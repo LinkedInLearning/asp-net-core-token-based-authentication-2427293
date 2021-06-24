@@ -13,5 +13,7 @@ namespace SchoolApp.API.Data
         public AppDbContext(DbContextOptions<AppDbContext> options): base(options)
         {
         }
+
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
     }
 }
