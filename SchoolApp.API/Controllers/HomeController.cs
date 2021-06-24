@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ namespace SchoolApp.API.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class HomeController : ControllerBase
     {
         public HomeController()

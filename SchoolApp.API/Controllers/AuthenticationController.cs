@@ -2,12 +2,16 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using SchoolApp.API.Data;
 using SchoolApp.API.Data.Models;
 using SchoolApp.API.Data.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace SchoolApp.API.Controllers
@@ -71,9 +75,42 @@ namespace SchoolApp.API.Controllers
             var userExists = await _userManager.FindByEmailAsync(loginVM.EmailAddress);
             if(userExists != null && await _userManager.CheckPasswordAsync(userExists, loginVM.Password))
             {
-                return Ok("User signed in");
+                var tokenValue = await GenerateJWTTokenAsync(userExists);
+                return Ok(tokenValue);
             }
             return Unauthorized();
+        }
+
+        private async Task<AuthResultVM> GenerateJWTTokenAsync(ApplicationUser user)
+        {
+            var authClaims = new List<Claim>()
+            {
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var authSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["JWT:Secret"]));
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JWT:Issuer"],
+                audience: _configuration["JWT:Audience"],
+                expires: DateTime.UtcNow.AddMinutes(1),
+                claims: authClaims,
+                signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256));
+
+            var jwtToken = new JwtSecurityTokenHandler().WriteToken(token);
+
+            var response = new AuthResultVM()
+            {
+                Token = jwtToken,
+                ExpiresAt = token.ValidTo
+            };
+
+            return response;
+
         }
     }
 }
