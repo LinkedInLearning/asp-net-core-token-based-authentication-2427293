@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SchoolApp.API.Data;
+using SchoolApp.API.Data.Helpers;
 using SchoolApp.API.Data.Models;
 using SchoolApp.API.Data.ViewModels;
 using System;
@@ -62,7 +63,25 @@ namespace SchoolApp.API.Controllers
             };
             var result = await _userManager.CreateAsync(newUser, registerVM.Password);
 
-            if (result.Succeeded) return Ok("User created");
+            if (result.Succeeded)
+            {
+                //Add user role
+
+                switch (registerVM.Role)
+                {
+                    case UserRoles.Manager:
+                        await _userManager.AddToRoleAsync(newUser, UserRoles.Manager);
+                        break;
+                    case UserRoles.Student:
+                        await _userManager.AddToRoleAsync(newUser, UserRoles.Student);
+                        break;
+                    default:
+                        break;
+                }
+
+
+                return Ok("User created");
+            }
             return BadRequest("User could not be created");
         }
     
@@ -129,6 +148,14 @@ namespace SchoolApp.API.Controllers
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+
+            //Add User Role Claims
+            var userRoles = await _userManager.GetRolesAsync(user);
+            foreach (var userRole in userRoles)
+            {
+                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+            }
+
 
             var authSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["JWT:Secret"]));
 
